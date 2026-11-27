@@ -4,7 +4,7 @@
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f3ee;color:#282b24;font:14px system-ui,sans-serif}header{height:70px;padding:0 4vw;background:#fcfbf7;border-bottom:1px solid #deded4;display:flex;align-items:center;justify-content:space-between}header strong{font: bold 25px Georgia;letter-spacing:-.6px}header strong span{color:#667a51}header small{color:#595d51}main{max-width:1500px;margin:auto;padding:30px 4vw}.intro{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:22px}h1{font:normal clamp(34px,5vw,54px)/1 Georgia;margin:0 0 9px;letter-spacing:-2px}p{margin:0;color:#555a4f}.layout{display:grid;grid-template-columns:245px minmax(0,1fr) 245px;gap:14px;align-items:start}.panel,.stage{background:#fcfbf8;border:1px solid #deded4;border-radius:12px;overflow:hidden}.panel{padding:16px}h2{font-size:15px;margin:0 0 13px}.line{height:1px;background:#e5e3db;margin:16px 0}.fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.pair{grid-template-columns:1fr 1fr}label{display:grid;gap:4px;color:#555a4f;font-size:12px}input,select,button{font:inherit;color:inherit;border:1px solid #d9dcd0;border-radius:7px;background:#fffefa;padding:8px;min-width:0}button{cursor:pointer;font-weight:600}button:hover{background:#e9ede1}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #517041;outline-offset:2px}.primary{background:#394e35;border-color:#394e35;color:white}.primary:hover{background:#4d6246}.full{width:100%;margin-top:8px}.catalog{display:grid;gap:6px}.catalog button,.item{text-align:left;width:100%;display:flex;justify-content:space-between;align-items:center;gap:5px}.catalog button span{color:#617451}.toolbar,.footer{padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.toolbar strong{font-size:13px}.tools{display:flex;gap:4px}.tools button{font-size:12px;padding:5px 8px}button[aria-pressed=true],.item.active{background:#e0e8d9;border-color:#a3b397}.viewport{background:#e9e7de;position:relative}canvas{width:100%;height:clamp(345px,54vh,620px);display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}.footer{font-size:12px;color:#555a4f}.badge{font-size:12px;padding:6px 9px;border-radius:20px;background:#e4ecd9;color:#34482e}.badge.warn{background:#f9e3d9;color:#873e2d}.item{margin-bottom:5px;font-size:13px;overflow-wrap:anywhere}.dot{width:9px;height:9px;border-radius:100%;flex:none}.item span:first-child{flex:1}.issue{font-size:12px;color:#923d2d;margin:6px 0;overflow-wrap:anywhere}.hint{font-size:12px;line-height:1.5}.remove{color:#883d2e}.space{margin-top:9px}#status{font-size:12px;min-height:16px}.actions{display:flex;gap:6px;flex-wrap:wrap}
 @media(max-width:1050px){.layout{grid-template-columns:195px minmax(0,1fr)}.inspector{grid-column:1/-1}}@media(max-width:670px){main{padding:18px 12px}.layout{display:flex;flex-direction:column}.stage,.panel{width:100%}.stage{order:-1}.intro{align-items:start;flex-direction:column}header{height:54px}.catalog{grid-template-columns:1fr 1fr}}
-.picker-head{margin:0 0 5px}.picker-controls{display:grid;gap:8px;margin:12px 0}.picker-results{display:grid;gap:8px;max-height:455px;overflow:auto;padding:2px 5px 3px 2px}.product{border:1px solid #deded4;border-radius:8px;padding:8px;background:#fffefa}.product canvas{height:90px;width:100%;object-fit:contain;cursor:default;background:#edebe2;border-radius:5px;margin-bottom:7px}.product-title{display:block;font-size:14px}.product small{display:block;color:#555a4f;margin:3px 0}.product-actions{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:7px}.product-actions a{color:#425e3b;font-size:12px}.product-actions button{font-size:12px;padding:5px 8px}.picker-note{font-size:11px;color:#555a4f;line-height:1.4}.edit-details summary{cursor:pointer;font-weight:600}.edit-details[open] summary{margin-bottom:10px}#items{max-height:210px;overflow:auto;padding:2px}
+.picker-head{margin:0 0 5px}.picker-controls{display:grid;gap:8px;margin:12px 0}.picker-results{display:grid;gap:8px;max-height:455px;overflow:auto;padding:2px 5px 3px 2px}.product{border:1px solid #deded4;border-radius:8px;padding:8px;background:#fffefa}.product-photo{margin:0 0 8px}.product-photo img{display:block;width:100%;height:105px;object-fit:contain;background:#edebe2;border-radius:5px}.product-photo figcaption{font-size:10px;color:#555a4f;margin-top:4px;line-height:1.35}.product-photo a{color:inherit}.product-title{display:block;font-size:14px}.product small{display:block;color:#555a4f;margin:3px 0}.product-actions{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:7px}.product-actions a{color:#425e3b;font-size:12px}.product-actions button{font-size:12px;padding:5px 8px}.picker-note{font-size:11px;color:#555a4f;line-height:1.4}.edit-details summary{cursor:pointer;font-weight:600}.edit-details[open] summary{margin-bottom:10px}#items{max-height:210px;overflow:auto;padding:2px}
 @media(min-width:1051px){.layout{grid-template-columns:220px minmax(0,1fr) 285px}}
 @media(max-width:1050px){.picker-results{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));max-height:400px}}
 </style>
@@ -21,7 +21,7 @@
 <div class="viewport"><canvas id="scene" aria-label="Interactive 3D furniture layout"></canvas></div>
 <div class="footer"><span>Drag furniture to move · drag empty space to orbit in 3D</span><span id="fit" class="badge" aria-live="polite"></span></div></section>
 <aside class="panel inspector"><h2>Layout <span id="count"></span></h2><div id="items"></div><div id="issues"></div>
-<div class="line"></div><section aria-labelledby="pickerTitle"><h2 class="picker-head" id="pickerTitle">Pick furniture</h2><p class="picker-note">IKEA U.S. measurements · original 3D previews</p>
+<div class="line"></div><section aria-labelledby="pickerTitle"><h2 class="picker-head" id="pickerTitle">Pick furniture</h2><p class="picker-note">IKEA U.S. measurements</p>
 <div class="picker-controls"><label>Search IKEA items<input id="productSearch" type="search" placeholder="Name or article number"></label><label>Furniture type<select id="productType"><option value="">All types</option></select></label></div>
 <p id="productCount" class="picker-note" aria-live="polite"></p><div class="picker-results" id="products"></div></section>
 <div class="line"></div><details class="edit-details" id="editDetails"><summary>Adjust selected piece</summary><div id="editor"></div></details></aside>
@@ -274,18 +274,44 @@ canvas.onpointermove=e=>{
   redraw();
 };
 canvas.onpointerup=canvas.onpointercancel=e=>{if(drag?.pointer===e.pointerId){if(drag.p)save();drag=null;refresh();}};
-function paintPreview(canvas,product){
-  const [w,d,h]=product.inches;
-  const p={w,d,h,x:0,z:0,a:0,type:product.type,color:product.color,sku:product.sku};
-  const g=canvas.getContext('2d'), angle=-.55, c=Math.cos(angle),s=Math.sin(angle);
-  const width=c*w-s*d,height=.57*(-s*w+c*d)+.82*h;
-  const scale=Math.min(205/width,130/height);
-  const view=([x,y,z])=>[120+scale*(c*x-s*z),76+scale*(.57*(s*x+c*z)-.82*(y-h/2))];
-  const depth=([x,y,z])=>.82*(s*x+c*z)+.57*y;
-  for(const {poly,fill} of furnitureFaces(p,view,depth)){
-    g.beginPath();poly.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.closePath();
-    g.fillStyle=fill;g.fill();g.strokeStyle='#493f352f';g.stroke();
-  }
+const productPhotos = {
+  "090.106.17": [
+    "d/de/Klippansofa.jpg/330px-Klippansofa.jpg",
+    "Klippansofa.jpg",
+    "MasterMarte",
+    "3.0",
+    "Shown in red"
+  ],
+  "902.494.83": [
+    "c/cb/Malm_bed_from_Ikea,_Brisbane,_Australia.jpg/330px-Malm_bed_from_Ikea,_Brisbane,_Australia.jpg",
+    "Malm_bed_from_Ikea,_Brisbane,_Australia.jpg",
+    "Kgbo",
+    "4.0",
+    "Reference photo · variant may differ"
+  ],
+  "205.220.46": [
+    "6/63/Billy_Bookcase_(cropped).jpg/330px-Billy_Bookcase_(cropped).jpg",
+    "Billy_Bookcase_(cropped).jpg",
+    "Nathan Kramer",
+    "4.0",
+    "Reference photo · variant may differ"
+  ]
+};
+function productPhoto(product){
+  const photo=productPhotos[product.sku];
+  if(!photo)return null;
+  const [thumbnail,file,author,license,caption]=photo;
+  const figure=document.createElement('figure');figure.className='product-photo';
+  const img=document.createElement('img');img.alt=product.name+' furniture reference';img.decoding='async';
+  img.onerror=()=>figure.remove();
+  img.src='https://thumb.wikimedia.org/wikipedia/commons/thumb/'+thumbnail;
+  const credit=document.createElement('figcaption');
+  const source=document.createElement('a');source.href='https://commons.wikimedia.org/wiki/File:'+file;
+  source.textContent=author;
+  const terms=document.createElement('a');terms.href='https://creativecommons.org/licenses/by-sa/'+license+'/';
+  terms.textContent='CC BY-SA '+license;
+  credit.append(caption,' · ',source,' · ',terms);
+  figure.append(img,credit);return figure;
 }
 let lastPickerKey;
 function renderProducts(){
@@ -301,8 +327,7 @@ function renderProducts(){
   el('productCount').textContent=matches.length?matches.length+' of '+ikeaProducts.length+' items · W × D × H':'No items match your search.';
   for(const product of matches){
     const card=document.createElement('article');card.className='product';
-    const preview=document.createElement('canvas');preview.width=240;preview.height=152;
-    preview.setAttribute('aria-hidden','true');paintPreview(preview,product);card.append(preview);
+    const photo=productPhoto(product);if(photo)card.append(photo);
     const name=document.createElement('strong');name.className='product-title';name.textContent=product.name;
     const desc=document.createElement('small');desc.textContent=product.description;
     const dimensions=document.createElement('small');
