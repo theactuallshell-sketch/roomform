@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roomform — 3D room planner</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f3ee;color:#282b24;font:14px system-ui,sans-serif}header{height:70px;padding:0 4vw;background:#fcfbf7;border-bottom:1px solid #deded4;display:flex;align-items:center;justify-content:space-between}header strong{font: bold 25px Georgia;letter-spacing:-.6px}header strong span{color:#667a51}header small{color:#595d51}main{max-width:1500px;margin:auto;padding:30px 4vw}.intro{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:22px}h1{font:normal clamp(34px,5vw,54px)/1 Georgia;margin:0 0 9px;letter-spacing:-2px}p{margin:0;color:#555a4f}.layout{display:grid;grid-template-columns:245px minmax(0,1fr) 245px;gap:14px;align-items:start}.panel,.stage{background:#fcfbf8;border:1px solid #deded4;border-radius:12px;overflow:hidden}.panel{padding:16px}h2{font-size:15px;margin:0 0 13px}.line{height:1px;background:#e5e3db;margin:16px 0}.fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.pair{grid-template-columns:1fr 1fr}label{display:grid;gap:4px;color:#555a4f;font-size:12px}input,select,button{font:inherit;color:inherit;border:1px solid #d9dcd0;border-radius:7px;background:#fffefa;padding:8px;min-width:0}button{cursor:pointer;font-weight:600}button:hover{background:#e9ede1}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #517041;outline-offset:2px}.primary{background:#394e35;border-color:#394e35;color:white}.primary:hover{background:#4d6246}.full{width:100%;margin-top:8px}.catalog{display:grid;gap:6px}.catalog button,.item{text-align:left;width:100%;display:flex;justify-content:space-between;align-items:center;gap:5px}.catalog button span{color:#617451}.toolbar,.footer{padding:11px 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.toolbar strong{font-size:13px}.tools{display:flex;gap:4px}.tools button{font-size:12px;padding:5px 8px}button[aria-pressed=true],.item.active{background:#e0e8d9;border-color:#a3b397}.viewport{background:#e9e7de;position:relative}canvas{width:100%;height:clamp(345px,54vh,620px);display:block;touch-action:none;cursor:grab}canvas:active{cursor:grabbing}.footer{font-size:12px;color:#555a4f}.badge{font-size:12px;padding:6px 9px;border-radius:20px;background:#e4ecd9;color:#34482e}.badge.warn{background:#f9e3d9;color:#873e2d}.item{margin-bottom:5px;font-size:13px;overflow-wrap:anywhere}.dot{width:9px;height:9px;border-radius:100%;flex:none}.item span:first-child{flex:1}.issue{font-size:12px;color:#923d2d;margin:6px 0;overflow-wrap:anywhere}.hint{font-size:12px;line-height:1.5}.remove{color:#883d2e}.space{margin-top:9px}#status{font-size:12px;min-height:16px}.actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:1050px){.layout{grid-template-columns:195px minmax(0,1fr)}.inspector{grid-column:1/-1}}@media(max-width:670px){main{padding:18px 12px}.layout{display:flex;flex-direction:column}.stage,.panel{width:100%}.stage{order:-1}.intro{align-items:start;flex-direction:column}header{height:54px}.catalog{grid-template-columns:1fr 1fr}}
+</style>
+<body><header><strong>Room<span>form</span></strong><small>3D room planner</small></header>
+<main>
+<div class="intro"><div><h1>Plan your room</h1><p>Set your measurements, arrange furniture, and check what fits.</p></div><div class="actions"><button id="export">Export layout</button><button id="import">Open layout</button><input id="file" type="file" accept=".json,application/json" hidden></div></div>
+<div class="layout">
+<aside class="panel"><h2>Room dimensions</h2>
+<label>Units<select id="units"><option value="cm">Centimeters (cm)</option><option value="in">Inches (in)</option></select></label>
+<div class="fields space" id="roomFields"></div>
+<div class="line"></div><h2>Add furniture</h2><div id="catalog" class="catalog"></div>
+<button id="custom" class="primary full">+ Custom piece</button></aside>
+<section class="stage" aria-label="Room preview"><div class="toolbar"><strong id="roomSize"></strong><div class="tools"><button id="perspective" aria-pressed="true">3D</button><button id="top" aria-pressed="false">Top</button><button id="left" aria-label="Orbit left">↶</button><button id="right" aria-label="Orbit right">↷</button><button id="minus" aria-label="Zoom out">−</button><button id="plus" aria-label="Zoom in">+</button></div></div>
+<div class="viewport"><canvas id="scene" aria-label="Interactive 3D furniture layout"></canvas></div>
+<div class="footer"><span>Drag furniture to move · drag empty space to orbit in 3D</span><span id="fit" class="badge" aria-live="polite"></span></div></section>
+<aside class="panel inspector"><h2>Layout <span id="count"></span></h2><div id="items"></div><div id="issues"></div>
+<div class="line"></div><div id="editor"></div></aside>
+</div><p class="space" id="status" role="status"></p>
+</main>
+<script>
+'use strict';
+const el = id => document.getElementById(id);
+const catalog = {
+  Sofa:[210,92,86,'#a77c61'], Armchair:[86,86,92,'#839274'],
+  'Coffee table':[110,57,43,'#927357'], Bed:[158,208,103,'#a3a18b'],
+  Desk:[125,62,76,'#997a5a'], Bookcase:[82,34,175,'#82735e'],
+  'Custom piece':[80,60,75,'#85938b']
+};
+function piece(type,x,z,id=crypto.randomUUID()){
+  const [w,d,h,color]=catalog[type];
+  return {id,type,name:type,w,d,h,color,x,z,a:0};
+}
+const initial = {room:{w:480,d:380,h:250},unit:'cm',items:[
+  piece('Sofa',180,79,'sofa'),piece('Armchair',385,154,'chair'),
+  piece('Coffee table',195,200,'table'),piece('Bookcase',400,29,'shelf')
+]};
+let state=structuredClone(initial);
+try{const saved=localStorage.getItem('roomform-v1');if(saved)state=validate(JSON.parse(saved));}catch{}
+let selected=state.items[0]?.id, angle=-.55, zoom=1, topView=false;
+const canvas=el('scene'), ctx=canvas.getContext('2d');
+let projection, hits=[];
+function save(){
+  try{localStorage.setItem('roomform-v1',JSON.stringify(state));el('status').textContent='Saved in this browser';}
+  catch{el('status').textContent='Browser storage is unavailable. Export your layout to keep a copy.';}
+}
+const factor=()=>state.unit==='in'?2.54:1;
+const display=n=>Number((n/factor()).toFixed(2));
+const size=n=>display(n)+' '+state.unit;
+const current=()=>state.items.find(p=>p.id===selected);
+function num(v,min,max){return typeof v==='number'&&Number.isFinite(v)&&v>=min&&v<=max;}
+function validate(data){
+  if(!data || !['cm','in'].includes(data.unit) || !data.room || !['w','d','h'].every(k=>num(data.room[k],1,10000)) || !Array.isArray(data.items) || data.items.length>150)throw Error('Invalid layout');
+  const ids=new Set();
+  for(const p of data.items){
+    if(!p || !Object.hasOwn(catalog,p.type) || typeof p.id!=='string' || ids.has(p.id) || typeof p.name!=='string' || p.name.length>70 ||
+      !/^#[0-9a-f]{6}$/i.test(p.color) || !['w','d','h'].every(k=>num(p[k],1,10000)) || !['x','z','a'].every(k=>num(p[k],-100000,100000)))throw Error('Invalid furniture');
+    ids.add(p.id);
+  }
+  return data;
+}
+function footprint(p){
+  const t=p.a*Math.PI/180,c=Math.cos(t),s=Math.sin(t);
+  return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[p.x+u*p.w*c/2-v*p.d*s/2,p.z+u*p.w*s/2+v*p.d*c/2]);
+}
+function overlaps(a,b){
+  for(const q of [a,b])for(let i=0;i<2;i++){
+    const nx=q[i+1][1]-q[i][1], nz=q[i][0]-q[i+1][0];
+    const u=a.map(p=>p[0]*nx+p[1]*nz),v=b.map(p=>p[0]*nx+p[1]*nz);
+    if(Math.min(Math.max(...u),Math.max(...v))-Math.max(Math.min(...u),Math.min(...v))<=1e-7)return false;
+  }
+  return true;
+}
+function check(){
+  const issues=[],bad=new Set(), r=state.room, feet=state.items.map(footprint);
+  state.items.forEach((p,i)=>{
+    if(feet[i].some(([x,z])=>x<-.000001||z<-.000001||x>r.w+.000001||z>r.d+.000001)){
+      issues.push(p.name+' crosses a wall');bad.add(p.id);
+    }
+    if(p.h>r.h+.000001){issues.push(p.name+' exceeds ceiling height');bad.add(p.id);}
+    for(let j=0;j<i;j++)if(overlaps(feet[i],feet[j])){
+      const q=state.items[j];issues.push(p.name+' overlaps '+q.name);bad.add(p.id);bad.add(q.id);
+    }
+  });
+  return {issues,bad};
+}
+function field(parent,label,val,callback,dimension=true,min=1,max=10000){
+  const wrapping=document.createElement('label'),input=document.createElement('input');
+  wrapping.append(label,input);input.type='number';input.step='any';
+  const f=dimension?factor():1;
+  input.min=min/f;input.max=max/f;input.value=dimension?display(val):val;
+  input.addEventListener('change',()=>{
+    if(input.value!==''&&num(input.valueAsNumber*f,min-.00001,max+.00001)){
+      callback(Math.max(min,Math.min(max,input.valueAsNumber*f)));save();refresh();
+    }else input.value=dimension?display(val):val;
+  });
+  parent.append(wrapping);
+}
+function button(label,fn,className=''){
+  const b=document.createElement('button');b.textContent=label;b.className=className;b.onclick=fn;return b;
+}
+function add(type){
+  if(state.items.length>=150){el('status').textContent='This layout supports up to 150 items.';return;}
+  const p=piece(type,state.room.w/2,state.room.d/2);
+  state.items.push(p);selected=p.id;save();refresh();
+}
+function refresh(){
+  const r=state.room, p=current(), room=el('roomFields');
+  el('units').value=state.unit;room.replaceChildren();
+  for(const [k,label] of [['w','Width'],['d','Depth'],['h','Height']])field(room,label,r[k],v=>r[k]=v);
+  el('roomSize').textContent=[r.w,r.d,r.h].map(display).join(' × ')+' '+state.unit;
+  el('count').textContent='('+state.items.length+')';
+  const list=el('items');list.replaceChildren();
+  for(const item of state.items){
+    const b=button(item.name,()=>{selected=item.id;refresh();},'item'+(item===p?' active':''));
+    b.setAttribute('aria-pressed',String(item===p));
+    const dot=document.createElement('span');dot.className='dot';dot.style.background=item.color;b.append(dot);list.append(b);
+  }
+  const ed=el('editor');ed.replaceChildren();
+  if(p){
+    const heading=document.createElement('h2');heading.textContent='Edit furniture';ed.append(heading);
+    const label=document.createElement('label'),name=document.createElement('input');label.append('Name',name);
+    name.value=p.name;name.maxLength=70;name.onchange=()=>{p.name=name.value.trim()||p.type;save();refresh();};ed.append(label);
+    const dims=document.createElement('div');dims.className='fields space';ed.append(dims);
+    for(const [k,title] of [['w','Width'],['d','Depth'],['h','Height']])field(dims,title,p[k],v=>p[k]=v);
+    const pos=document.createElement('div');pos.className='fields pair space';ed.append(pos);
+    field(pos,'Center X',p.x,v=>p.x=v,true,-100000,100000);
+    field(pos,'Center depth',p.z,v=>p.z=v,true,-100000,100000);
+    const controls=document.createElement('div');controls.className='space';ed.append(controls);
+    field(controls,'Rotation (°)',p.a,v=>p.a=((v%360)+360)%360,false,-100000,100000);
+    ed.append(button('Rotate 90°',()=>{p.a=(p.a+90)%360;save();refresh();},'full'),
+      button('Remove piece',()=>{state.items=state.items.filter(i=>i!==p);selected=state.items[0]?.id;save();refresh();},'full remove'));
+  }else{ed.textContent='Add or select a piece to edit it.';}
+  redraw();
+}
+function redraw(){
+  const {issues,bad}=check(), box=el('issues');
+  box.replaceChildren();
+  for(const issue of issues.slice(0,8)){const p=document.createElement('p');p.className='issue';p.textContent=issue;box.append(p);}
+  if(issues.length>8){const p=document.createElement('p');p.className='issue';p.textContent='+'+(issues.length-8)+' more';box.append(p);}
+  const fit=el('fit');fit.textContent=issues.length?issues.length+' fit '+(issues.length===1?'issue':'issues'):state.items.length?'Everything fits':'Empty room';
+  fit.classList.toggle('warn',issues.length>0);
+  draw(bad);
+}
+function draw(bad){
+  const W=canvas.clientWidth,H=canvas.clientHeight,dpr=devicePixelRatio||1;
+  if(!W||!H)return;
+  if(canvas.width!==Math.round(W*dpr)||canvas.height!==Math.round(H*dpr)){canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);}
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+  const r=state.room, c=topView?1:Math.cos(angle),s=topView?0:Math.sin(angle),tilt=topView?1:.57, rise=topView?0:.82;
+  const scale=zoom*Math.min((W-35)/(Math.abs(c)*r.w+Math.abs(s)*r.d), (H-35)/((Math.abs(s)*r.w+Math.abs(c)*r.d)*tilt+(!topView?Math.min(r.h,85)*rise:0)));
+  const ox=W/2,oy=H/2+(topView?0:16);
+  const view=([x,y,z])=>[ox+scale*(c*(x-r.w/2)-s*(z-r.d/2)),oy+scale*(tilt*(s*(x-r.w/2)+c*(z-r.d/2))-rise*y)];
+  projection=(x,y)=>{
+    const u=(x-ox)/scale,v=(y-oy)/scale/tilt;
+    return [r.w/2+c*u+s*v,r.d/2-s*u+c*v];
+  };
+  function polygon(points,color,outline){
+    ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+    if(color){ctx.fillStyle=color;ctx.fill();}
+    if(outline){ctx.strokeStyle=outline;ctx.lineWidth=1;ctx.stroke();}
+  }
+  const corners=[[0,0,0],[r.w,0,0],[r.w,0,r.d],[0,0,r.d]];
+  polygon(corners.map(view),'#d8bea1','#a98969');
+  const grid= Math.max(25,Math.ceil(Math.max(r.w,r.d)/1250)*25);
+  ctx.strokeStyle='#b4937355';ctx.lineWidth=1;ctx.beginPath();
+  function line(a,b){ctx.moveTo(...view(a));ctx.lineTo(...view(b));}
+  for(let x=grid;x<r.w;x+=grid)line([x,0,0],[x,0,r.d]);
+  for(let z=grid;z<r.d;z+=grid)line([0,0,z],[r.w,0,z]);
+  ctx.stroke();
+  if(!topView){
+    const wall=Math.min(r.h,85);
+    const walls=[c>=0?[0,1]:[2,3],s>=0?[3,0]:[1,2]];
+    for(const [i,j] of walls){
+      const a=corners[i],b=corners[j];
+      polygon([a,b,[b[0],wall,b[2]],[a[0],wall,a[2]]].map(view),i%2?'#c7cbb8':'#f5f0e1','#b7b8a8');
+    }
+  }
+  hits=[];
+  const depth=([x,y,z])=>rise*(s*x+c*z)+tilt*y;
+  const ordered=state.items.slice().sort((a,b)=>depth([a.x,0,a.z])-depth([b.x,0,b.z]));
+  for(const p of ordered){
+    const outline=bad.has(p.id)?'#a63d2d':p.id===selected?'#425e3b':null;
+    const feet=footprint(p).map(([x,z])=>view([x,0,z]));
+    polygon(feet,topView?p.color:'#66544833',outline);
+    hits.push({id:p.id,poly:feet});
+    if(topView)continue;
+    const faces=[];
+    const t=p.a*Math.PI/180;
+    const point=(u,y,v)=>[p.x+(u-.5)*p.w*Math.cos(t)-(v-.5)*p.d*Math.sin(t),y*p.h,p.z+(u-.5)*p.w*Math.sin(t)+(v-.5)*p.d*Math.cos(t)];
+    function part(x,y,z,w,h,d,color){
+      const pts=[[x,y,z],[x+w,y,z],[x+w,y,z+d],[x,y,z+d],[x,y+h,z],[x+w,y+h,z],[x+w,y+h,z+d],[x,y+h,z+d]].map(q=>point(...q));
+      for(const [indices,shade] of [[[0,1,5,4],.72],[[1,2,6,5],.85],[[2,3,7,6],.9],[[3,0,4,7],.78],[[4,5,6,7],1.13]]){
+        const vertices=indices.map(i=>pts[i]),poly=vertices.map(view);
+        const [a,b,c]=poly;
+        if((b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0])<=0)continue;
+        const rgb=[1,3,5].map(i=>Math.min(255,Math.round(parseInt(color.slice(i,i+2),16)*shade)));
+        faces.push({poly,fill:'rgb('+rgb.join(',')+')',depth:vertices.reduce((sum,q)=>sum+depth(q),0)/4});
+      }
+    }
+    function legs(top){for(const x of [0,.89])for(const z of [0,.89])part(x,0,z,.11,top,.11,'#694f3d');}
+    if(['Sofa','Armchair'].includes(p.type)){
+      legs(.18);part(0,.17,0,1,.31,1,p.color);part(0,.42,0,1,.58,.22,p.color);
+      for(const x of [0,.84])part(x,.47,.22,.16,.27,.78,p.color);
+      part(.16,.47,.23,.68,.1,.75,p.color);
+    }else if(p.type==='Bed'){
+      legs(.15);part(0,.12,0,1,.18,1,p.color);part(0,.3,.09,1,.17,.91,'#e5ddcf');part(0,.47,.36,1,.04,.64,p.color);
+      part(0,.27,0,1,.73,.09,p.color);for(const x of [.07,.54])part(x,.47,.12,.39,.09,.22,'#f7f1e7');
+    }else if(['Desk','Coffee table'].includes(p.type)){
+      legs(.89);part(0,.89,0,1,.11,1,p.color);
+    }else if(p.type==='Bookcase'){
+      part(0,0,0,1,1,.11,p.color);for(const x of [0,.94])part(x,0,.11,.06,1,.89,p.color);
+      for(const y of [0,.24,.48,.72,.95])part(.06,y,.11,.88,.05,.89,p.color);
+    }else part(0,0,0,1,1,1,p.color);
+    faces.sort((a,b)=>a.depth-b.depth);
+    faces.forEach(f=>{polygon(f.poly,f.fill,outline||'#51463a44');hits.push({id:p.id,poly:f.poly});});
+  }
+}
+function contains(poly,x,y){
+  return poly.reduce((inside,[a,b],i)=>{
+    const [c,d]=poly[(i+1)%poly.length];
+    return ((b>y)!==(d>y)&&x<(c-a)*(y-b)/(d-b)+a)?!inside:inside;
+  },false);
+}
+let drag;
+canvas.onpointerdown=e=>{
+  if(e.button!==0||drag||!projection)return;
+  const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+  const hit=hits.slice().reverse().find(h=>contains(h.poly,x,y));
+  const p=state.items.find(item=>item.id===hit?.id);
+  drag={pointer:e.pointerId,p,x,y,start:projection(x,y),px:p?.x,pz:p?.z,angle};
+  canvas.setPointerCapture(e.pointerId);
+  if(p){selected=p.id;refresh();}
+};
+canvas.onpointermove=e=>{
+  if(!drag||drag.pointer!==e.pointerId)return;
+  const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+  if(drag.p){const [u,v]=projection(x,y);drag.p.x=Math.max(-100000,Math.min(100000,drag.px+u-drag.start[0]));drag.p.z=Math.max(-100000,Math.min(100000,drag.pz+v-drag.start[1]));}
+  else if(!topView)angle=drag.angle+(x-drag.x)/140;
+  redraw();
+};
+canvas.onpointerup=canvas.onpointercancel=e=>{if(drag?.pointer===e.pointerId){if(drag.p)save();drag=null;refresh();}};
+for(const type of Object.keys(catalog).filter(t=>t!=='Custom piece'))el('catalog').append(button(type+'  +',()=>add(type)));
+el('custom').onclick=()=>add('Custom piece');
+el('units').onchange=e=>{state.unit=e.target.value;save();refresh();};
+function mode(top){topView=top;el('top').setAttribute('aria-pressed',String(top));el('perspective').setAttribute('aria-pressed',String(!top));redraw();}
+el('top').onclick=()=>mode(true);el('perspective').onclick=()=>mode(false);
+el('left').onclick=()=>{angle-=Math.PI/8;mode(false);};el('right').onclick=()=>{angle+=Math.PI/8;mode(false);};
+el('minus').onclick=()=>{zoom=Math.max(.35,zoom/1.2);redraw();};el('plus').onclick=()=>{zoom=Math.min(4,zoom*1.2);redraw();};
+el('export').onclick=()=>{
+  const a=document.createElement('a'),url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
+  a.href=url;a.download='roomform-layout.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+el('import').onclick=()=>el('file').click();
+el('file').onchange=async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{
+    if(file.size>1000000)throw Error('File too large');
+    const loaded=validate(JSON.parse(await file.text()));state=loaded;selected=state.items[0]?.id;save();refresh();
+  }catch{el('status').textContent='Could not open this file. Choose a valid Roomform layout.';}
+  e.target.value='';
+};
+new ResizeObserver(redraw).observe(canvas);refresh();
+</script></body>
+</html>
